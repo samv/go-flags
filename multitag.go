@@ -2,6 +2,7 @@ package flags
 
 import (
 	"strconv"
+	"unicode"
 )
 
 type multiTag struct {
@@ -16,27 +17,20 @@ func newMultiTag(v string) multiTag {
 }
 
 func (x *multiTag) scan() (map[string][]string, error) {
-	v := x.value
+	v := []rune(x.value)
 
 	ret := make(map[string][]string)
 
 	// This is mostly copied from reflect.StructTag.Get
-	for v != "" {
-		i := 0
-
+	for len(v) > 0 {
 		// Skip whitespace
-		for i < len(v) && v[i] == ' ' {
-			i++
-		}
-
-		v = v[i:]
-
-		if v == "" {
-			break
+		if unicode.IsSpace(v[0]) {
+			v = v[1:]
+			continue
 		}
 
 		// Scan to colon to find key
-		i = 0
+		i := 0
 
 		for i < len(v) && v[i] != ' ' && v[i] != ':' && v[i] != '"' {
 			i++
@@ -58,7 +52,7 @@ func (x *multiTag) scan() (map[string][]string, error) {
 			return nil, newErrorf(ErrTag, "expected `\"' to start tag value, but got `%v' (in `%v`)", v[i+1], x.value)
 		}
 
-		name := v[:i]
+		name := string(v[:i])
 		v = v[i+1:]
 
 		// Scan quoted string to find value
@@ -79,7 +73,7 @@ func (x *multiTag) scan() (map[string][]string, error) {
 			return nil, newErrorf(ErrTag, "expected end of tag value `\"' at end of tag (in `%v`)", x.value)
 		}
 
-		val, err := strconv.Unquote(v[:i+1])
+		val, err := strconv.Unquote(string(v[:i+1]))
 
 		if err != nil {
 			return nil, newErrorf(ErrTag, "Malformed value of tag `%v:%v` => %v (in `%v`)", name, v[:i+1], err, x.value)
